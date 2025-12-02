@@ -9,11 +9,28 @@ const window = () => {
 
     window.resize(windowWidth, windowHeight);
 
-    let scrollY = 0;
-    let scrollStep = 15
-
     const rootView = new QWidget();
     rootView.setObjectName("myroot");
+
+    let scrollY = 0;
+    let scrollStep = 15;
+    let displayList: { x: number, y: number, text: string }[] = [];
+    let cursorY = 0;
+    let displayHeight = 0;
+
+    const handleScroll = (isDown: boolean) => {
+        if (isDown) {
+            if (scrollY < 0) {
+                scrollY += scrollStep;
+                renderContent();
+            }
+        } else {
+            if (displayHeight - windowHeight > -scrollY) {
+                scrollY -= scrollStep;
+                renderContent();
+            }
+        }
+    }
 
     window.setCentralWidget(rootView);
     window.addEventListener(WidgetEventTypes.KeyPress, (event) => {
@@ -24,8 +41,7 @@ const window = () => {
         const key = keyEvent.key();
         if ([Key.Key_Down, Key.Key_Up].includes(key)) {
             keyEvent.accept();
-            scrollY += key === Key.Key_Down ? scrollStep : -scrollStep;
-            renderContent();
+            handleScroll(key === Key.Key_Down);
         }
     });
     window.addEventListener(WidgetEventTypes.Wheel, (event) => {
@@ -33,13 +49,7 @@ const window = () => {
             return;
         }
         const wheelEvent = new QWheelEvent(event);
-        if (wheelEvent.angleDelta().y > 0) {
-            scrollY += scrollStep;
-            renderContent();
-        } else {
-            scrollY -= scrollStep;
-            renderContent();
-        }
+        handleScroll(wheelEvent.angleDelta().y > 0);
     });
     window.addEventListener(WidgetEventTypes.Resize, (event) => {
         if (!event) {
@@ -75,14 +85,12 @@ const window = () => {
         });
     }
 
-    let displayList: { x: number, y: number, text: string }[] = [];
-    let cursorY = 0;
-
     const renderContent = (data?: string) => {
         data?.split('\n').forEach((line) => {
             displayList.push({ x: 0, y: cursorY, text: line });
             cursorY += scrollStep;
         });
+        displayHeight = cursorY;
         clearWidgets();
         displayList.forEach(({ x, y, text }) => {
             if (y + scrollY < 0 || y + scrollY > windowHeight) {
