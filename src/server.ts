@@ -49,10 +49,10 @@ interface HandlerResult {
 const router: { [key: string]: (request: IncomingMessage) => HandlerResult } = {
     '/': (request: IncomingMessage) => {
         let body = '';
-        for (let i = 0; i < 20; i++) {
-            body += `Hello world! {${i}}`;
+        for (let i = 0; i < 10000; i++) {
+            body += `Hello world! {${i}}\n`;
         }
-        body = [...Array(10)].map(() => body).join('\n');
+        // body = [...Array(10000)].map(() => body).join('\n');
         return { status: 200, body, headers: { 'Content-Type': 'text/plain' } };
     },
     '/json': (request: IncomingMessage) => {

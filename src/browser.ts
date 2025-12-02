@@ -1,15 +1,14 @@
-import { Key, QKeyEvent, QLabel, QMainWindow, QResizeEvent, QWheelEvent, QWidget, TextFormat, WidgetEventTypes, QFontMetrics, QFont } from "@nodegui/nodegui";
+import { Key, QKeyEvent, QLabel, QMainWindow, QResizeEvent, QWheelEvent, QWidget, TextFormat, WidgetEventTypes } from "@nodegui/nodegui";
 
 const window = () => {
     const window = new QMainWindow();
     window.setWindowTitle("browser");
 
-    let windowWidth = 300;
-    let windowHeight = 200;
+    let windowWidth = 800;
+    let windowHeight = 600;
 
     window.resize(windowWidth, windowHeight);
 
-    let scrollX = 0;
     let scrollY = 0;
     let scrollStep = 15
 
@@ -23,13 +22,9 @@ const window = () => {
         }
         const keyEvent = new QKeyEvent(event);
         const key = keyEvent.key();
-        if ([Key.Key_Down, Key.Key_Up, Key.Key_Left, Key.Key_Right].includes(key)) {
+        if ([Key.Key_Down, Key.Key_Up].includes(key)) {
             keyEvent.accept();
-            if ([Key.Key_Down, Key.Key_Up].includes(key)) {
-                scrollY += key === Key.Key_Down ? scrollStep : -scrollStep;
-            } else {
-                scrollX += key === Key.Key_Right ? scrollStep : -scrollStep;
-            }
+            scrollY += key === Key.Key_Down ? scrollStep : -scrollStep;
             renderContent();
         }
     });
@@ -38,19 +33,11 @@ const window = () => {
             return;
         }
         const wheelEvent = new QWheelEvent(event);
-        wheelEvent.accept();
         if (wheelEvent.angleDelta().y > 0) {
             scrollY += scrollStep;
             renderContent();
         } else {
             scrollY -= scrollStep;
-            renderContent();
-        }
-        if (wheelEvent.angleDelta().x > 0) {
-            scrollX += scrollStep;
-            renderContent();
-        } else {
-            scrollX -= scrollStep;
             renderContent();
         }
     });
@@ -61,8 +48,10 @@ const window = () => {
         const resizeEvent = new QResizeEvent(event);
         resizeEvent.accept();
         const newSize = resizeEvent.size();
-        windowWidth = newSize.width();
-        windowHeight = newSize.height();
+        const newWidth = newSize.width();
+        const newHeight = newSize.height();
+        windowWidth = newWidth;
+        windowHeight = newHeight;
         renderContent();
     });
 
@@ -87,31 +76,19 @@ const window = () => {
     }
 
     let displayList: { x: number, y: number, text: string }[] = [];
-    let cursorX = 0;
     let cursorY = 0;
-
-    const font = new QFont();
-    const metrics = new QFontMetrics(font);
-    const height = metrics.height();
 
     const renderContent = (data?: string) => {
         data?.split('\n').forEach((line) => {
-            line.split('').forEach((char) => {
-                displayList.push({ x: cursorX, y: cursorY, text: char });
-                cursorX += metrics.horizontalAdvance(char);
-            });
-            cursorX = 0;
-            cursorY += height;
+            displayList.push({ x: 0, y: cursorY, text: line });
+            cursorY += scrollStep;
         });
         clearWidgets();
         displayList.forEach(({ x, y, text }) => {
             if (y + scrollY < 0 || y + scrollY > windowHeight) {
                 return;
             }
-            if (x + scrollX < 0 || x + scrollX > windowWidth) {
-                return;
-            }
-            renderText(text, x + scrollX, y + scrollY);
+            renderText(text, x, y + scrollY);
         });
     }
 
