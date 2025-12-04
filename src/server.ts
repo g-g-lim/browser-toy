@@ -87,13 +87,17 @@ server.on('request', (request, response) => {
     const url = request.url!;
     let handler = router[url];
 
-    // Get handler data or parse numeric URL
-    const match = url.match(/^\/?(\d+)$/);
-    const data = handler
-        ? handler(request)
-        : match
-            ? { status: 200, body: generateTextBody(parseInt(match[1])), headers: { 'Content-Type': 'text/plain' } }
-            : null;
+    let data: HandlerResult | null = null;
+
+    if (handler) {
+        data = handler(request);
+    } else {
+        const match = url.match(/^\/?(\d+)$/);
+        if (match) {
+            const count = parseInt(match[1]);
+            data = { status: 200, body: generateTextBody(count), headers: { 'Content-Type': 'text/plain' } };
+        }
+    }
 
     if (!data) {
         response.writeHead(404, { 'Content-Type': 'text/plain', 'Content-Length': Buffer.byteLength('Not found') });
@@ -101,7 +105,6 @@ server.on('request', (request, response) => {
         return;
     }
 
-    // Send response with optional gzip compression
     const acceptEncoding = request.headers['accept-encoding'] || '';
     if (acceptEncoding.includes('gzip')) {
         const compressed = gzipSync(data.body);
