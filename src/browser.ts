@@ -36,20 +36,7 @@ const scrollbarWidget = (windowHeight: number) => {
 const window = () => {
     const window = new QMainWindow();
     window.setWindowTitle("browser");
-
     window.resize(windowWidth, windowHeight);
-
-    const rootView = new QWidget();
-    rootView.setObjectName("myroot");
-    window.setCentralWidget(rootView);
-
-    const scrollbar = scrollbarWidget(windowHeight);
-
-    scrollbar.addEventListener('valueChanged', (scrollPosition) => {
-        scrollY = -scrollPosition;
-        renderContent();
-    });
-
     window.addEventListener(WidgetEventTypes.KeyPress, (event) => {
         if (!event || contentHeight < windowHeight) {
             return;
@@ -88,6 +75,15 @@ const window = () => {
         }
     });
 
+    const rootView = new QWidget();
+    rootView.setObjectName("myroot");
+    window.setCentralWidget(rootView);
+
+    const scrollbar = scrollbarWidget(windowHeight);
+    scrollbar.addEventListener('valueChanged', (scrollPosition) => {
+        scrollY = -scrollPosition;
+        renderContent();
+    });
     const handleScroll = (direction: 'up' | 'down', step = scrollStep) => {
         if (direction === 'up') {
             scrollY = Math.min(0, scrollY + step);
