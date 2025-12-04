@@ -23,14 +23,13 @@ const renderText = (parentWidget: QWidget, text: string, x: number, y: number) =
     return label;
 }
 
-const scrollbarWidget = (parentWidget: QWidget, windowWidth: number, windowHeight: number) => {
+const scrollbarWidget = (windowHeight: number) => {
     const scrollbar = new QScrollBar();
     scrollbar.setObjectName("scrollbar");
     scrollbar.setOrientation(Orientation.Vertical);
     scrollbar.resize(15, windowHeight);
     scrollbar.setMinimum(0);
     scrollbar.setMaximum(windowHeight);
-    // render(parentWidget, scrollbar, windowWidth - scrollbar.width(), 0);
     return scrollbar;
 }
 
@@ -44,7 +43,7 @@ const window = () => {
     rootView.setObjectName("myroot");
     window.setCentralWidget(rootView);
 
-    const scrollbar = scrollbarWidget(rootView, windowWidth, windowHeight);
+    const scrollbar = scrollbarWidget(windowHeight);
 
     scrollbar.addEventListener('valueChanged', (scrollPosition) => {
         scrollY = -scrollPosition;
