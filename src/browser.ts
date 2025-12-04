@@ -1,8 +1,8 @@
-import { Key, Orientation, QKeyEvent, QLabel, QMainWindow, QResizeEvent, QScreen, QScrollBar, QWheelEvent, QWidget, TextFormat, WidgetEventTypes } from "@nodegui/nodegui";
+import { Key, Orientation, QKeyEvent, QLabel, QMainWindow, QPixmap, QResizeEvent, QScreen, QScrollBar, QWheelEvent, QWidget, TextFormat, WidgetEventTypes } from "@nodegui/nodegui";
 
 let scrollY = 0;
 let scrollStep = 15;
-let displayList: { x: number, y: number, text: string }[] = [];
+let displayList: { x: number, y: number, content: string, type: 'image' | 'text' }[] = [];
 let cursorY = 0;
 let contentHeight = 0;
 let windowWidth = 800;
@@ -31,6 +31,23 @@ const scrollbarWidget = (windowHeight: number) => {
     scrollbar.setMinimum(0);
     scrollbar.setMaximum(windowHeight);
     return scrollbar;
+}
+
+const renderImage = (parentWidget: QWidget, image: string, x: number, y: number) => {
+    const imageWidget = new QLabel();
+    imageWidget.setObjectName("image");
+    const pixmap = new QPixmap();
+    const loaded = pixmap.load(image);
+
+    if (!loaded) {
+        console.error(`Failed to load image: ${image}`);
+        return imageWidget;
+    }
+
+    imageWidget.setPixmap(pixmap);
+    imageWidget.resize(pixmap.width(), pixmap.height());
+    render(parentWidget, imageWidget, x, y);
+    return imageWidget;
 }
 
 const window = () => {
@@ -84,19 +101,19 @@ const window = () => {
         scrollY = -scrollPosition;
         renderContent();
     });
-    const handleScroll = (direction: 'up' | 'down', step = scrollStep) => {
+    const handleScroll = (direction: 'up' | 'down') => {
         if (direction === 'up') {
-            scrollY = Math.min(0, scrollY + step);
+            scrollY = Math.min(0, scrollY + scrollStep);
         } else {
-            scrollY = Math.max(windowHeight - contentHeight, scrollY - step);
+            scrollY = Math.max(windowHeight - contentHeight, scrollY - scrollStep);
         }
         scrollbar.setValue(-scrollY);
         renderContent();
     }
 
-    const renderContent = (data?: string) => {
-        data?.split('\n').forEach((line) => {
-            displayList.push({ x: 0, y: cursorY, text: line });
+    const renderContent = (data?: { type: 'text' | 'image', content: string }[]) => {
+        data?.forEach(({ type, content }) => {
+            displayList.push({ x: 0, y: cursorY, content, type });
             cursorY += scrollStep;
         });
 
@@ -107,16 +124,20 @@ const window = () => {
         }
 
         rootView.children().forEach((child) => {
-            if (child.objectName() === "label") {
+            if (child.objectName() === "label" || child.objectName() === "image") {
                 child.delete();
             }
         });
 
-        displayList.forEach(({ x, y, text }) => {
+        displayList.forEach(({ x, y, content, type }) => {
             if (y + scrollY < 0 || y + scrollY > windowHeight) {
                 return;
             }
-            renderText(rootView, text, x, y + scrollY);
+            if (type === 'text') {
+                renderText(rootView, content, x, y + scrollY);
+            } else {
+                renderImage(rootView, content, x, y + scrollY);
+            }
         });
     }
 

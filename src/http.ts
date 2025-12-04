@@ -159,24 +159,24 @@ const request = (options: RequestOptions) => {
                 contentLength = parseInt(headers['Content-Length'] || '0');
 
             }
-
             if (bodyStart + contentLength <= buffer.length) {
+                const extra = buffer.length > bodyStart + contentLength
+                    ? util.copySlice(buffer, bodyStart + contentLength, buffer.length)
+                    : null;
                 if (headers['Content-Encoding'] === 'gzip') {
-                    do_unzip(util.copySlice(buffer, bodyStart, bodyStart + contentLength)).then((bodyBuffer) => {
-                        const body = parseBody(headers?.['Content-Type'], bodyBuffer);
-                        cleanup();
-                        resolve({ status: status!, headers: headers!, body });
-                    });
+                    do_unzip(util.copySlice(buffer, bodyStart, bodyStart + contentLength))
+                        .then((bodyBuffer) => {
+                            const body = parseBody(headers?.['Content-Type'], bodyBuffer);
+                            cleanup();
+                            if (extra) socket.unshift(extra);
+                            resolve({ status: status!, headers: headers!, body });
+                        })
                 } else {
                     const bodyBuffer = util.copySlice(buffer, bodyStart, bodyStart + contentLength);
                     const body = parseBody(headers['Content-Type'], bodyBuffer);
                     cleanup();
+                    if (extra) socket.unshift(extra);
                     resolve({ status, headers, body });
-                }
-
-                if (buffer.length > bodyStart + contentLength) {
-                    const extra = util.copySlice(buffer, bodyStart + contentLength, buffer.length);
-                    socket.unshift(extra);
                 }
             }
         };
