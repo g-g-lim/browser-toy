@@ -7,7 +7,10 @@ async function main() {
 
     window.show();
 
-    let response = await http.request({ url: 'http://localhost:8888/', method: 'GET', headers: { 'Accept-Encoding': 'gzip' } })
+    let response = await http.request({ url: 'http://localhost:8888', method: 'GET', headers: { 'Accept-Encoding': 'gzip' } });
+
+    // time.sleep
+    // await new Promise((resolve) => setTimeout(resolve, 5000));
 
     renderContent(response.body as string);
 

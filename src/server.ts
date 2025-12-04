@@ -49,7 +49,7 @@ interface HandlerResult {
 const router: { [key: string]: (request: IncomingMessage) => HandlerResult } = {
     '/': (request: IncomingMessage) => {
         let body = '';
-        for (let i = 0; i < 70; i++) {
+        for (let i = 0; i < 100; i++) {
             body += `{${i}} ${'Hello world!'.repeat(1)}\n`;
         }
         return { status: 200, body, headers: { 'Content-Type': 'text/plain' } };
