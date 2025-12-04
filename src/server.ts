@@ -46,12 +46,17 @@ interface HandlerResult {
     headers: { [key: string]: string };
 }
 
+const generateTextBody = (count: number): string => {
+    let body = '';
+    for (let i = 0; i < count; i++) {
+        body += `{${i}} ${'Hello world!'.repeat(1)}\n`;
+    }
+    return body;
+};
+
 const router: { [key: string]: (request: IncomingMessage) => HandlerResult } = {
     '/': (request: IncomingMessage) => {
-        let body = '';
-        for (let i = 0; i < 100; i++) {
-            body += `{${i}} ${'Hello world!'.repeat(1)}\n`;
-        }
+        let body = 'Hello world!';
         return { status: 200, body, headers: { 'Content-Type': 'text/plain' } };
     },
     '/json': (request: IncomingMessage) => {
@@ -79,23 +84,34 @@ const logRequest = (request: IncomingMessage) => {
 
 server.on('request', (request, response) => {
     logRequest(request);
-    const handler = router[request.url!];
-    if (handler) {
-        const data = handler(request);
-        const acceptEncoding = request.headers['accept-encoding'] || '';
-        if (acceptEncoding.includes('gzip')) {
-            const compressed = gzipSync(data.body);
-            response.writeHead(data.status, {
-                'Content-Encoding': 'gzip',
-                'Content-Length': compressed.length
-            });
-            response.end(compressed);
-        } else {
-            response.writeHead(data.status, { 'Content-Length': Buffer.byteLength(data.body) });
-            response.end(data.body);
-        }
-    } else {
+    const url = request.url!;
+    let handler = router[url];
+
+    // Get handler data or parse numeric URL
+    const match = url.match(/^\/?(\d+)$/);
+    const data = handler
+        ? handler(request)
+        : match
+            ? { status: 200, body: generateTextBody(parseInt(match[1])), headers: { 'Content-Type': 'text/plain' } }
+            : null;
+
+    if (!data) {
         response.writeHead(404, { 'Content-Type': 'text/plain', 'Content-Length': Buffer.byteLength('Not found') });
         response.end('Not found');
+        return;
+    }
+
+    // Send response with optional gzip compression
+    const acceptEncoding = request.headers['accept-encoding'] || '';
+    if (acceptEncoding.includes('gzip')) {
+        const compressed = gzipSync(data.body);
+        response.writeHead(data.status, {
+            'Content-Encoding': 'gzip',
+            'Content-Length': compressed.length
+        });
+        response.end(compressed);
+    } else {
+        response.writeHead(data.status, { 'Content-Length': Buffer.byteLength(data.body) });
+        response.end(data.body);
     }
 });

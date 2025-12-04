@@ -23,14 +23,14 @@ const renderText = (parentWidget: QWidget, text: string, x: number, y: number) =
     return label;
 }
 
-const renderScrollbar = (parentWidget: QWidget, windowWidth: number, windowHeight: number) => {
+const scrollbarWidget = (parentWidget: QWidget, windowWidth: number, windowHeight: number) => {
     const scrollbar = new QScrollBar();
     scrollbar.setObjectName("scrollbar");
     scrollbar.setOrientation(Orientation.Vertical);
     scrollbar.resize(15, windowHeight);
     scrollbar.setMinimum(0);
     scrollbar.setMaximum(windowHeight);
-    render(parentWidget, scrollbar, windowWidth - scrollbar.width(), 0);
+    // render(parentWidget, scrollbar, windowWidth - scrollbar.width(), 0);
     return scrollbar;
 }
 
@@ -44,7 +44,7 @@ const window = () => {
     rootView.setObjectName("myroot");
     window.setCentralWidget(rootView);
 
-    const scrollbar = renderScrollbar(rootView, windowWidth, windowHeight);
+    const scrollbar = scrollbarWidget(rootView, windowWidth, windowHeight);
 
     scrollbar.addEventListener('valueChanged', (scrollPosition) => {
         scrollY = -scrollPosition;
@@ -52,7 +52,7 @@ const window = () => {
     });
 
     window.addEventListener(WidgetEventTypes.KeyPress, (event) => {
-        if (!event) {
+        if (!event || contentHeight < windowHeight) {
             return;
         }
         const keyEvent = new QKeyEvent(event);
@@ -63,7 +63,7 @@ const window = () => {
         }
     });
     window.addEventListener(WidgetEventTypes.Wheel, (event) => {
-        if (!event) {
+        if (!event || contentHeight < windowHeight) {
             return;
         }
         const wheelEvent = new QWheelEvent(event);
@@ -84,7 +84,9 @@ const window = () => {
         renderContent();
 
         scrollbar.resize(scrollbar.width(), windowHeight);
-        render(rootView, scrollbar, windowWidth - scrollbar.width(), 0);
+        if (contentHeight >= windowHeight) {
+            render(rootView, scrollbar, windowWidth - scrollbar.width(), 0);
+        }
     });
 
     const handleScroll = (direction: 'up' | 'down', step = scrollStep) => {
@@ -104,7 +106,10 @@ const window = () => {
         });
 
         contentHeight = cursorY;
-        scrollbar.setMaximum(Math.max(contentHeight - windowHeight, 0));
+        if (contentHeight >= windowHeight) {
+            render(rootView, scrollbar, windowWidth - scrollbar.width(), 0);
+            scrollbar.setMaximum(Math.max(contentHeight - windowHeight, 0));
+        }
 
         rootView.children().forEach((child) => {
             if (child.objectName() === "label") {
