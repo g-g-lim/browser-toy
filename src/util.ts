@@ -11,5 +11,4 @@ const repeatArr = <T>(arr: T, count: number) => {
     return result;
 }
 
-
 export { copySlice, repeatArr };

@@ -49,14 +49,18 @@ interface HandlerResult {
 const generateTextBody = (count: number): string => {
     let body = '';
     for (let i = 0; i < count; i++) {
-        body += `{${i}} ${'Hello world!'.repeat(1)}\n`;
+        body += `${i}-${'Hello world! '.repeat(1)}`;
+        // 10개씩 \n 붙이기
+        if (i % 10 === 9) {
+            body += '\n';
+        }
     }
     return body;
 };
 
 const router: { [key: string]: (request: IncomingMessage) => HandlerResult } = {
     '/': (request: IncomingMessage) => {
-        let body = 'Hello world!';
+        let body = 'Hello world! '.repeat(1000);
         return { status: 200, body, headers: { 'Content-Type': 'text/plain' } };
     },
     '/json': (request: IncomingMessage) => {

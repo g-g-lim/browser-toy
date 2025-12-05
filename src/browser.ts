@@ -1,12 +1,28 @@
-import { Key, Orientation, QKeyEvent, QLabel, QMainWindow, QPixmap, QResizeEvent, QScreen, QScrollBar, QWheelEvent, QWidget, TextFormat, WidgetEventTypes } from "@nodegui/nodegui";
+import * as fx from "@fxts/core";
+import {
+    AlignmentFlag,
+    Key,
+    Orientation,
+    QFont,
+    QFontMetrics,
+    QKeyEvent,
+    QLabel,
+    QMainWindow,
+    QPixmap,
+    QResizeEvent,
+    QScrollBar,
+    QWheelEvent,
+    QWidget,
+    TextFormat,
+    WidgetEventTypes
+} from "@nodegui/nodegui";
 
-let scrollY = 0;
-let scrollStep = 15;
-let displayList: { x: number, y: number, content: string, type: 'image' | 'text' }[] = [];
-let cursorY = 0;
-let contentHeight = 0;
-let windowWidth = 800;
-let windowHeight = 600;
+let SCROLL_Y = 0;
+let SCROLL_STEP = 15;
+let DISPLAY_LIST: { content: string, type: 'image' | 'text' }[] = [];
+let CONTENT_HEIGHT = 0;
+let WINDOW_WIDTH = 800;
+let WINDOW_HEIGHT = 400;
 
 const render = (parentWidget: QWidget, widget: QWidget, x: number, y: number) => {
     widget.setParent(parentWidget);
@@ -14,13 +30,16 @@ const render = (parentWidget: QWidget, widget: QWidget, x: number, y: number) =>
     widget.show();
 }
 
-const renderText = (parentWidget: QWidget, text: string, x: number, y: number) => {
+const renderText = (parentWidget: QWidget, font: QFont, text: string, x: number, y: number,) => {
     const label = new QLabel();
     label.setObjectName("label");
     label.setText(text);
     label.setTextFormat(TextFormat.PlainText);
+    label.setFont(font);
+    label.setAlignment(AlignmentFlag.AlignLeft | AlignmentFlag.AlignTop);
+    label.adjustSize();
     render(parentWidget, label, x, y);
-    return label;
+    return { label, };
 }
 
 const scrollbarWidget = (windowHeight: number) => {
@@ -53,9 +72,9 @@ const renderImage = (parentWidget: QWidget, image: string, x: number, y: number)
 const window = () => {
     const window = new QMainWindow();
     window.setWindowTitle("browser");
-    window.resize(windowWidth, windowHeight);
+    window.resize(WINDOW_WIDTH, WINDOW_HEIGHT);
     window.addEventListener(WidgetEventTypes.KeyPress, (event) => {
-        if (!event || contentHeight < windowHeight) {
+        if (!event || CONTENT_HEIGHT < WINDOW_HEIGHT) {
             return;
         }
         const keyEvent = new QKeyEvent(event);
@@ -66,7 +85,7 @@ const window = () => {
         }
     });
     window.addEventListener(WidgetEventTypes.Wheel, (event) => {
-        if (!event || contentHeight < windowHeight) {
+        if (!event || CONTENT_HEIGHT < WINDOW_HEIGHT) {
             return;
         }
         const wheelEvent = new QWheelEvent(event);
@@ -81,46 +100,43 @@ const window = () => {
         const newSize = resizeEvent.size();
         const newWidth = newSize.width();
         const newHeight = newSize.height();
-        windowWidth = newWidth;
-        windowHeight = newHeight;
+        WINDOW_WIDTH = newWidth;
+        WINDOW_HEIGHT = newHeight;
+
+        scrollbar.resize(scrollbar.width(), WINDOW_HEIGHT);
+        if (CONTENT_HEIGHT >= WINDOW_HEIGHT) {
+            render(rootView, scrollbar, WINDOW_WIDTH - scrollbar.width(), 0);
+        }
 
         renderContent();
-
-        scrollbar.resize(scrollbar.width(), windowHeight);
-        if (contentHeight >= windowHeight) {
-            render(rootView, scrollbar, windowWidth - scrollbar.width(), 0);
-        }
     });
 
     const rootView = new QWidget();
     rootView.setObjectName("myroot");
     window.setCentralWidget(rootView);
 
-    const scrollbar = scrollbarWidget(windowHeight);
+    const scrollbar = scrollbarWidget(WINDOW_HEIGHT);
     scrollbar.addEventListener('valueChanged', (scrollPosition) => {
-        scrollY = -scrollPosition;
+        SCROLL_Y = -scrollPosition;
         renderContent();
     });
     const handleScroll = (direction: 'up' | 'down') => {
         if (direction === 'up') {
-            scrollY = Math.min(0, scrollY + scrollStep);
+            SCROLL_Y = Math.min(0, SCROLL_Y + SCROLL_STEP);
         } else {
-            scrollY = Math.max(windowHeight - contentHeight, scrollY - scrollStep);
+            SCROLL_Y = Math.max(WINDOW_HEIGHT - CONTENT_HEIGHT, SCROLL_Y - SCROLL_STEP);
         }
-        scrollbar.setValue(-scrollY);
+        scrollbar.setValue(-SCROLL_Y);
         renderContent();
     }
 
-    const renderContent = (data?: { type: 'text' | 'image', content: string }[]) => {
-        data?.forEach(({ type, content }) => {
-            displayList.push({ x: 0, y: cursorY, content, type });
-            cursorY += scrollStep;
-        });
+    const font = new QFont("Helvetica", 16);
+    const metrics = new QFontMetrics(font);
+    SCROLL_STEP = metrics.lineSpacing();
 
-        contentHeight = cursorY;
-        if (contentHeight >= windowHeight) {
-            render(rootView, scrollbar, windowWidth - scrollbar.width(), 0);
-            scrollbar.setMaximum(Math.max(contentHeight - windowHeight, 0));
+    const renderContent = (data?: { type: 'text' | 'image', content: string }[]) => {
+        if (data) {
+            DISPLAY_LIST.push(...data);
         }
 
         rootView.children().forEach((child) => {
@@ -129,19 +145,38 @@ const window = () => {
             }
         });
 
-        displayList.forEach(({ x, y, content, type }) => {
-            if (y + scrollY < 0 || y + scrollY > windowHeight) {
-                return;
-            }
-            if (type === 'text') {
-                renderText(rootView, content, x, y + scrollY);
-            } else {
-                renderImage(rootView, content, x, y + scrollY);
-            }
-        });
+        let x = 0;
+        let y = 0;
+        let spaceWidth = metrics.horizontalAdvance(' ');
+
+        fx.pipe(
+            DISPLAY_LIST,
+            fx.filter(({ type }) => type === 'text'),
+            fx.flatMap(({ content }) => content.split(' ')),
+            fx.map((word) => {
+                const temp = { word, x, y };
+                const wordWidth = metrics.horizontalAdvance(word) + spaceWidth;
+                x += wordWidth;
+                if (x > WINDOW_WIDTH - wordWidth) {
+                    x = 0;
+                    y += metrics.height() * 1.25;
+                }
+                return temp;
+            }),
+            fx.filter(({ y }) => y + SCROLL_Y >= 0 && y + SCROLL_Y < WINDOW_HEIGHT),
+            fx.each(({ word, x, y }) => {
+                renderText(rootView, font, word, x, y + SCROLL_Y)
+            })
+        )
+
+        CONTENT_HEIGHT = y;
+        if (CONTENT_HEIGHT >= WINDOW_HEIGHT) {
+            render(rootView, scrollbar, WINDOW_WIDTH - scrollbar.width(), 0);
+            scrollbar.setMaximum(Math.max(CONTENT_HEIGHT - WINDOW_HEIGHT, 0));
+        }
     }
 
-    return { window, renderContent };
+    return { window, renderContent, renderText };
 }
 
 
