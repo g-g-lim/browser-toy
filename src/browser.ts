@@ -39,7 +39,7 @@ const renderText = (parentWidget: QWidget, font: QFont, text: string, x: number,
     label.setAlignment(AlignmentFlag.AlignLeft | AlignmentFlag.AlignTop);
     label.adjustSize();
     render(parentWidget, label, x, y);
-    return { label, };
+    return label;
 }
 
 const scrollbarWidget = (windowHeight: number) => {
@@ -176,7 +176,7 @@ const window = () => {
         }
     }
 
-    return { window, renderContent, renderText };
+    return { window, renderContent };
 }
 
 
