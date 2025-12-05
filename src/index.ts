@@ -3,7 +3,7 @@ import browser from './browser';
 import * as util from './util';
 
 async function main() {
-    const { window, renderContent, renderText } = browser.window();
+    const { window, renderContent } = browser.window();
 
     window.show();
 
